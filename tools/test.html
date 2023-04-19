@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Lighthouse Service Test</title>
+  <script type="module">
+    const formEl = document.querySelector('form');
+    const resultsEl = document.querySelector('.results');
+
+    const endpoint = new URLSearchParams(window.location.search).get('endpoint') || localStorage.getItem('endpoint');
+    if(!endpoint) {
+      resultsEl.innerHTML = `<div class="error"><h4>Error:</h4><p>invalid endpoint! use query param or localStorage key 'endpoint' to set it first.</p></div>`;
+      return;
+    }
+
+    formEl.onsubmit = async (e) => {
+      e.preventDefault();
+      if (!formEl.reportValidity()) return;
+
+      resultsEl.innerHTML = '';
+      const url = formEl.querySelector('#url').value;
+      const token = formEl.querySelector('#token').value;
+
+      const opts = token ? { headers: { 'x-set-cookie': `hlx-auth-token=${token}` } } : undefined;
+      const resp = await fetch(`${endpoint}?url=${url}`, opts);
+      let data = {};
+      try {
+        data = await resp.json();
+      } catch { }
+
+      if (!resp.ok) {
+        resultsEl.innerHTML = `<div class="error"><h4>Error:</h4><p>${data.message || resp.headers.get('x-error')}</p></div>`;
+        return;
+      }
+
+      console.log('results: ', data);
+      resultsEl.innerHTML = `<div class="success"><h4>Results:</h4><pre>${JSON.stringify(data, undefined, 2)}</pre></div>`;
+    }
+  </script>
+</head>
+
+<body>
+  <header></header>
+  <main>
+    <div>
+      <div class="lighthouse">
+        <form>
+          <label for="url">URL</label>
+          <input id="url" placeholder="https://branch--repo--owner.hlx.page" type="text" required>
+
+          <label for="token">Token</label>
+          <textarea id="token" placeholder="eyJ0..."></textarea>
+
+          <button role="submit">Run Lighthouse</button>
+        </form>
+
+        <div class="results">
+
+        </div>
+      </div>
+    </div>
+  </main>
+  <footer></footer>
+</body>
+
+</html>
