@@ -2,10 +2,16 @@
 <html>
 
 <head>
-  <title>Lighthouse</title>
+  <title>Lighthouse Service Test</title>
   <script type="module">
     const formEl = document.querySelector('form');
     const resultsEl = document.querySelector('.results');
+
+    const endpoint = new URLSearchParams(window.location.search).get('endpoint') || localStorage.getItem('endpoint');
+    if(!endpoint) {
+      resultsEl.innerHTML = `<div class="error"><h4>Error:</h4><p>invalid endpoint! use query param or localStorage key 'endpoint' to set it first.</p></div>`;
+      return;
+    }
 
     formEl.onsubmit = async (e) => {
       e.preventDefault();
@@ -16,7 +22,7 @@
       const token = formEl.querySelector('#token').value;
 
       const opts = token ? { headers: { 'x-set-cookie': `hlx-auth-token=${token}` } } : undefined;
-      const resp = await fetch(`https://71d93nvx91.execute-api.us-east-1.amazonaws.com/default/lighthouse-test?url=${url}`, opts);
+      const resp = await fetch(`${endpoint}?url=${url}`, opts);
       let data = {};
       try {
         data = await resp.json();
