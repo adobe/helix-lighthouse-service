@@ -1,0 +1,10 @@
+node_modules
+!node_modules/@sparticuz
+!node_modules/lighthouse
+test.*
+test/
+.*
+*.sh
+*.md
+*.yml
+src/
