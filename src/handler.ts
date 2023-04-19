@@ -46,6 +46,7 @@ const setupContext = (_request: Request, pctx: Partial<Context>) => {
 };
 
 const run = async (request: Request, ctx: Context) => {
+  const { log } = ctx;
   // eslint-disable-next-line no-param-reassign
   ctx = setupContext(request, ctx);
 
@@ -59,12 +60,11 @@ const run = async (request: Request, ctx: Context) => {
 
   try {
     const config = resolveConfig(request, ctx);
-    const lighthouseResult = await timeout(() => runLighthouse(config), TIMEOUT);
+    const lighthouseResult = await timeout(() => runLighthouse(config, ctx), TIMEOUT);
     return makeResponse(200, { lighthouseResult });
   } catch (e) {
     const err = e as Error | ErrorWithResponse;
     if (err.message === 'timeout') {
-      console.info('timeout');
       return makeErrorResponse(504, 'timeout');
     }
 
@@ -72,7 +72,7 @@ const run = async (request: Request, ctx: Context) => {
       return err.response;
     }
 
-    console.error('runtime error: ', err);
+    log.error('runtime error: ', err);
     return makeErrorResponse(500, err.message);
   }
 };

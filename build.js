@@ -16,7 +16,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import * as esbuild from 'esbuild';
 import { config as configEnv } from 'dotenv';
-// import { copy as copyPlugin } from 'esbuild-plugin-copy';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -81,6 +80,7 @@ try {
     await esbuild.build(opts);
   }
 } catch (e) {
+  // eslint-disable-next-line no-console
   console.error('build error: ', e);
   process.exitCode = 1;
 }

@@ -10,6 +10,9 @@
  * governing permissions and limitations under the License.
  */
 
-export type AnyFunction = (...args: any[]) => any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type AnyOk = any;
+
+export type AnyFunction = (...args: AnyOk[]) => AnyOk;
 
 export type HTTPMethod = 'GET' | 'POST' | 'PUT' | 'GET' | 'OPTIONS' | 'DELETE' | 'PATCH';

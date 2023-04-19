@@ -19,7 +19,7 @@ import chromium from '@sparticuz/chromium';
 import type { Flags, Config as LHConfig, Result as LHResult } from 'lighthouse';
 import type { Browser } from 'puppeteer';
 import { throwableResponse } from './response.js';
-import type { Config, IncludeStrings } from './types';
+import type { Config, Context, IncludeStrings } from './types';
 
 export const CATEGORIES_WO_PWA = ['accessibility', 'best-practices', 'performance', 'seo'];
 
@@ -109,12 +109,16 @@ function filterResult(presult: LHResult, config: Config): Partial<LHResult> {
   return result;
 }
 
-export default async function runLighthouse(config: Config) {
+export default async function runLighthouse(config: Config, ctx: Context) {
+  const { log } = ctx;
   const {
-    url, strategy = 'mobile', cookies, categories,
+    url,
+    strategy = 'mobile',
+    cookies,
+    categories,
   } = config;
 
-  console.debug('[Lighthouse] running on url: ', url.toString());
+  log.debug('[Lighthouse] running on url: ', url.toString());
 
   let browser: Browser;
   if (process.env.NODE_ENV === 'testing') {
@@ -172,7 +176,7 @@ export default async function runLighthouse(config: Config) {
   page.close();
 
   if (result.runtimeError) {
-    console.info('[Lighthouse] runtime error: ', result.runtimeError);
+    log.info('[Lighthouse] runtime error: ', result.runtimeError);
     const { code, message } = result.runtimeError;
     throw throwableResponse(500, `error from lighthouse: ${code}`, message);
   }

@@ -27,6 +27,7 @@ export interface Context extends Helix.UniversalContext {
   env: Environment;
   data: POSTData | undefined;
   queryParams: URLSearchParams;
+  log: Console;
   invocation: {
     id: string;
     deadline: number;
