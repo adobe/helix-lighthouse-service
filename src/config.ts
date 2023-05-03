@@ -26,21 +26,25 @@ const parseMultiValueHeader = (all: string): Record<string, string> => Object.fr
 const parseCookies = (
   url: URL,
   headerVal: string,
+  ctx: Context,
 ): CookieConfig[] => {
+  const { log } = ctx;
   const cookies = parseMultiValueHeader(headerVal);
   const spl = url.hostname.split('.');
   const domain = spl.slice(Math.max(spl.length - 3, 0)).join('.');
   // TODO: make these configurable from the header
-  return Object.entries(cookies).map(([name, value]) => ({
+  const cookieArr = Object.entries(cookies).map(([name, value]) => ({
     domain,
     name,
     value,
-    sameSite: 'None',
+    sameSite: 'None' as const,
     path: '/',
     httpOnly: true,
     secure: true,
     expires: Math.ceil(Date.now() / 1000 + 30),
   }));
+  log.debug('[config] set cookies: ', cookieArr.map((c) => c.name));
+  return cookieArr;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -98,7 +102,7 @@ export default function resolveConfig(request: Request, ctx: Context): Config {
     timing,
   };
   if (request.headers.has('x-set-cookie')) {
-    config.cookies = parseCookies(url, request.headers.get('x-set-cookie'));
+    config.cookies = parseCookies(url, request.headers.get('x-set-cookie'), ctx);
   }
 
   return config;
