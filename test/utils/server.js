@@ -10,8 +10,6 @@
  * governing permissions and limitations under the License.
  */
 
-/* eslint-disable no-console */
-
 import { DevelopmentServer } from '@adobe/helix-deploy';
 import { resolve } from 'path';
 import { fileURLToPath } from 'url';
@@ -19,6 +17,8 @@ import { fileURLToPath } from 'url';
 /* eslint-disable */
 import handler from '../../dist/main/handler.js';
 /* eslint-enable */
+
+/* eslint-disable no-console */
 
 // eslint-disable-next-line no-underscore-dangle
 global.__rootdir = resolve(fileURLToPath(import.meta.url), '..', '..', '..');

@@ -164,7 +164,7 @@ export default async function runLighthouse(config: Config, ctx: Context) {
   if (result.runWarnings && cookies && cookies.find((c) => c.name === 'hlx-auth-token')) {
     const redirectedToLogin = result.runWarnings.find((warning) => warning.includes('was redirected to https://login.microsoftonline.com'));
     if (redirectedToLogin) {
-      throw throwableResponse(401, 'authorization error', redirectedToLogin);
+      throw throwableResponse(401, 'authorization error', 'test URL was redirected to login');
     }
   }
 
