@@ -21,6 +21,16 @@ import type {
   Request,
 } from './types';
 
+const DEFAULT_AUDITS = [
+  'speed-index',
+  'first-contentful-paint',
+  'first-meaningful-paint',
+  'largest-contentful-paint',
+  'interactive',
+  'total-blocking-time',
+  'cumulative-layout-shift',
+];
+
 const parseMultiValueHeader = (all: string): Record<string, string> => Object.fromEntries(all.split(';').map((one) => one.trim().split('='))) as Record<string, string>;
 
 const parseCookies = (
@@ -89,7 +99,7 @@ export default function resolveConfig(request: Request, ctx: Context): Config {
     throw throwableResponse(400, 'invalid url parameter');
   }
 
-  const audits = parseIncludeStrings(ctx.queryParams.get('audits'));
+  const audits = parseIncludeStrings(ctx.queryParams.get('audits'), DEFAULT_AUDITS);
   const categories = parseIncludeStrings(ctx.queryParams.get('categories'), CATEGORIES_WO_PWA);
   const timing = ['true', true].includes(ctx.queryParams.get('timing'));
 
