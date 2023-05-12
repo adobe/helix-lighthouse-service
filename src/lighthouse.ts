@@ -10,7 +10,7 @@
  * governing permissions and limitations under the License.
  */
 
-import puppeteer from 'puppeteer';
+import puppeteer, { Page } from 'puppeteer';
 import lighthouse from 'lighthouse';
 import BASE_DESKTOP_CONFIG from 'lighthouse/core/config/lr-desktop-config.js';
 import BASE_MOBILE_CONFIG from 'lighthouse/core/config/lr-mobile-config.js';
@@ -22,6 +22,60 @@ import { throwableResponse } from './response.js';
 import type { Config, Context, IncludeStrings } from './types';
 
 export const CATEGORIES_WO_PWA = ['accessibility', 'best-practices', 'performance', 'seo'];
+
+const CHROMIUM_ARGS = [
+  '--allow-pre-commit-input',
+  '--disable-background-networking',
+  '--disable-background-timer-throttling',
+  '--disable-backgrounding-occluded-windows',
+  '--disable-breakpad',
+  '--disable-client-side-phishing-detection',
+  '--disable-component-extensions-with-background-pages',
+  '--disable-component-update',
+  '--disable-default-apps',
+  '--disable-dev-shm-usage',
+  '--disable-extensions',
+  '--disable-hang-monitor',
+  '--disable-ipc-flooding-protection',
+  '--disable-popup-blocking',
+  '--disable-prompt-on-repost',
+  '--disable-renderer-backgrounding',
+  '--disable-sync',
+  '--enable-automation',
+  '--enable-blink-features=IdleDetection',
+  '--export-tagged-pdf',
+  '--force-color-profile=srgb',
+  '--metrics-recording-only',
+  '--no-first-run',
+  '--password-store=basic',
+  '--use-mock-keychain',
+  '--disable-domain-reliability',
+  '--disable-print-preview',
+  '--disable-speech-api',
+  '--disk-cache-size=33554432',
+  '--mute-audio',
+  '--no-default-browser-check',
+  '--no-pings',
+  '--single-process',
+  '--disable-features=Translate,BackForwardCache,AcceptCHFrame,MediaRouter,OptimizationHints,AudioServiceOutOfProcess,IsolateOrigins,site-per-process',
+  '--enable-features=NetworkServiceInProcess2,SharedArrayBuffer',
+  '--hide-scrollbars',
+  '--ignore-gpu-blocklist',
+  '--in-process-gpu',
+  '--window-size=1920,1080',
+  '--allow-running-insecure-content',
+  '--disable-setuid-sandbox',
+  '--disable-site-isolation-trials',
+  '--disable-web-security',
+  '--no-sandbox',
+  '--no-zygote',
+  "--headless='new'",
+  // MODIFIED
+  '--use-gl=swiftshader',
+  '--use-angle=gl',
+  // ADDED
+  '--disable-gpu',
+];
 
 const FLAGS: Flags = {
   disableFullPageScreenshot: true,
@@ -38,6 +92,7 @@ const MOBILE_CONFIG: LHConfig = {
     maxWaitForFcp: 15 * 1000,
     maxWaitForLoad: 35 * 1000,
     throttlingMethod: 'simulate',
+    networkQuietThresholdMs: 1000,
     throttling: {
       requestLatencyMs: 150,
       uploadThroughputKbps: 750,
@@ -116,70 +171,87 @@ export default async function runLighthouse(config: Config, ctx: Context) {
     strategy = 'mobile',
     cookies,
     categories,
+    audits,
   } = config;
 
   log.debug('[Lighthouse] running on url: ', url.toString());
 
   let browser: Browser;
-  if (process.env.NODE_ENV === 'testing') {
-    browser = await puppeteer.launch({
-      headless: 'new',
-      defaultViewport: chromium.defaultViewport,
-      args: chromium.args,
-    });
-  } else {
-    const executablePath = await chromium.executablePath();
-    browser = await puppeteer.launch({
-      headless: chromium.headless,
-      defaultViewport: chromium.defaultViewport,
-      executablePath,
-      args: chromium.args,
-    });
-  }
+  let page: Page;
 
-  const page = await browser.newPage();
-
-  if (cookies && cookies.length) {
-    await page.setCookie(...cookies);
-  }
-
-  const lhConfig = strategy === 'desktop' ? DESKTOP_CONFIG : MOBILE_CONFIG;
-
-  // exclude pwa from the test entirely, if possible
-  if (categories !== 'all' && !categories.includes('pwa')) {
-    lhConfig.settings.onlyCategories = CATEGORIES_WO_PWA;
-  }
-
-  const resp = await lighthouse(
-    url.toString(),
-    FLAGS,
-    lhConfig,
-    page,
-  );
-  if (!resp) {
-    throw throwableResponse(500, 'failed to run lighthouse');
-  }
-
-  const { lhr: result } = resp;
-  if (result.runWarnings && cookies && cookies.find((c) => c.name === 'hlx-auth-token')) {
-    const redirectedToLogin = result.runWarnings.find((warning) => warning.includes('was redirected to https://login.microsoftonline.com'));
-    if (redirectedToLogin) {
-      throw throwableResponse(401, 'authorization error', 'test URL was redirected to login');
+  try {
+    if (process.env.NODE_ENV === 'testing') {
+      browser = await puppeteer.launch({
+        headless: 'new',
+        defaultViewport: chromium.defaultViewport,
+        args: CHROMIUM_ARGS,
+      });
+    } else {
+      const executablePath = await chromium.executablePath();
+      browser = await puppeteer.launch({
+        headless: chromium.headless,
+        defaultViewport: chromium.defaultViewport,
+        executablePath,
+        args: CHROMIUM_ARGS,
+      });
     }
+
+    log.debug('[Lighthouse] launched browser...');
+
+    page = await browser.newPage();
+
+    log.debug('[Lighthouse] created page...');
+
+    if (cookies && cookies.length) {
+      await page.setCookie(...cookies);
+    }
+
+    log.debug('[Lighthouse] set cookies...');
+
+    const lhConfig = strategy === 'desktop' ? DESKTOP_CONFIG : MOBILE_CONFIG;
+
+    // exclude pwa from the test entirely, if possible
+    if (categories !== 'all' && !categories.includes('pwa')) {
+      lhConfig.settings.onlyCategories = CATEGORIES_WO_PWA;
+    }
+
+    const resp = await lighthouse(
+      url.toString(),
+      FLAGS,
+      lhConfig,
+      page,
+    );
+    log.debug('[Lighthouse] ran lighthouse...');
+
+    if (!resp) {
+      log.error('[Lighthouse] error: did not get response');
+      throw throwableResponse(500, 'failed to run lighthouse');
+    }
+
+    const { lhr: result } = resp;
+    if (result.runWarnings && cookies && cookies.find((c) => c.name === 'hlx-auth-token')) {
+      const redirectedToLogin = result.runWarnings.find((warning) => warning.includes('was redirected to https://login.microsoftonline.com'));
+      if (redirectedToLogin) {
+        throw throwableResponse(401, 'authorization error', 'test URL was redirected to login');
+      }
+    }
+
+    if ((audits.includes('all') || audits.includes('speed-index')) && result.audits['speed-index']?.score === null) {
+      const msg = result.audits['speed-index'].errorMessage || 'failed to get performance score';
+      log.error('[Lighthouse] audit error: ', msg);
+      throw throwableResponse(500, msg);
+    }
+
+    if (result.runtimeError) {
+      log.info('[Lighthouse] runtime error: ', result.runtimeError);
+      const { code, message } = result.runtimeError;
+      throw throwableResponse(500, `error from lighthouse: ${code}`, message);
+    }
+
+    return filterResult(result, config);
+  } finally {
+    log.info('[Lighthouse] cleaning up...');
+    await page.close();
+    await browser.close();
   }
-
-  // don't wait for browser close
-  // it should be cleaned up anyway, and waiting causes a timeout often
-  // await browser.close();
-
-  // eslint-disable-next-line @typescript-eslint/no-floating-promises
-  page.close();
-
-  if (result.runtimeError) {
-    log.info('[Lighthouse] runtime error: ', result.runtimeError);
-    const { code, message } = result.runtimeError;
-    throw throwableResponse(500, `error from lighthouse: ${code}`, message);
-  }
-
-  return filterResult(result, config);
 }
