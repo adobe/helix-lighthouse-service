@@ -239,13 +239,13 @@ export default async function runLighthouse(config: Config, ctx: Context) {
     if ((audits.includes('all') || audits.includes('speed-index')) && result.audits['speed-index']?.score === null) {
       const msg = result.audits['speed-index'].errorMessage || 'failed to get performance score';
       log.error('[Lighthouse] audit error: ', msg);
-      throw throwableResponse(500, msg);
+      throw throwableResponse(502, msg);
     }
 
     if (result.runtimeError) {
       log.info('[Lighthouse] runtime error: ', result.runtimeError);
       const { code, message } = result.runtimeError;
-      throw throwableResponse(500, `error from lighthouse: ${code}`, message);
+      throw throwableResponse(502, `error from lighthouse: ${code}`, message);
     }
 
     return filterResult(result, config);
