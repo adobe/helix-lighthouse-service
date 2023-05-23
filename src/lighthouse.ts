@@ -23,6 +23,8 @@ import type { Config, Context, IncludeStrings } from './types';
 
 export const CATEGORIES_WO_PWA = ['accessibility', 'best-practices', 'performance', 'seo'];
 
+const MOBILE_CPU_SLOWDOWN_MULTIPLIER = parseFloat(process.env.MOBILE_CPU_SLOWDOWN_MULTIPLIER || '8') || 8;
+
 const CHROMIUM_ARGS = [
   '--allow-pre-commit-input',
   '--disable-background-networking',
@@ -97,7 +99,7 @@ const MOBILE_CONFIG: LHConfig = {
       requestLatencyMs: 150,
       uploadThroughputKbps: 750,
       downloadThroughputKbps: 1600,
-      cpuSlowdownMultiplier: 1,
+      cpuSlowdownMultiplier: MOBILE_CPU_SLOWDOWN_MULTIPLIER,
     },
   },
 };
@@ -173,8 +175,9 @@ export default async function runLighthouse(config: Config, ctx: Context) {
     categories,
     audits,
   } = config;
+  const lhConfig = strategy === 'desktop' ? DESKTOP_CONFIG : MOBILE_CONFIG;
 
-  log.debug('[Lighthouse] running on url: ', url.toString());
+  log.debug(`[Lighthouse] running on url=${url.toString()} slowdown=${lhConfig.settings.throttling.cpuSlowdownMultiplier}`);
 
   let browser: Browser;
   let page: Page;
@@ -196,19 +199,11 @@ export default async function runLighthouse(config: Config, ctx: Context) {
       });
     }
 
-    log.debug('[Lighthouse] launched browser...');
-
     page = await browser.newPage();
-
-    log.debug('[Lighthouse] created page...');
 
     if (cookies && cookies.length) {
       await page.setCookie(...cookies);
     }
-
-    log.debug('[Lighthouse] set cookies...');
-
-    const lhConfig = strategy === 'desktop' ? DESKTOP_CONFIG : MOBILE_CONFIG;
 
     // exclude pwa from the test entirely, if possible
     if (categories !== 'all' && !categories.includes('pwa')) {
@@ -221,7 +216,6 @@ export default async function runLighthouse(config: Config, ctx: Context) {
       lhConfig,
       page,
     );
-    log.debug('[Lighthouse] ran lighthouse...');
 
     if (!resp) {
       log.error('[Lighthouse] error: did not get response');
@@ -250,7 +244,6 @@ export default async function runLighthouse(config: Config, ctx: Context) {
 
     return filterResult(result, config);
   } finally {
-    log.info('[Lighthouse] cleaning up...');
     await page.close();
     await browser.close();
   }
