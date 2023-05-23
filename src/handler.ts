@@ -40,6 +40,8 @@ const setupContext = (_request: Request, pctx: Partial<Context>) => {
       ctx.queryParams = new URLSearchParams(ctx.data as Record<string, string>);
     } else if (ctx.invocation?.event?.queryStringParameters) {
       ctx.queryParams = new URLSearchParams(ctx.invocation.event.queryStringParameters);
+    } else {
+      ctx.queryParams = new URLSearchParams();
     }
   }
   return ctx;
