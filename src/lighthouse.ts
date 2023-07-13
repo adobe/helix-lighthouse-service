@@ -18,7 +18,7 @@ import chromium from '@sparticuz/chromium';
 
 import type { Flags, Config as LHConfig, Result as LHResult } from 'lighthouse';
 import type { Browser } from 'puppeteer';
-import { throwableResponse } from './response.js';
+import { isErrorWithResponse, throwableResponse } from './response.js';
 import type { Config, Context, IncludeStrings } from './types';
 
 export const CATEGORIES_WO_PWA = ['accessibility', 'best-practices', 'performance', 'seo'];
@@ -166,7 +166,7 @@ function filterResult(presult: LHResult, config: Config): Partial<LHResult> {
   return result;
 }
 
-export default async function runLighthouse(config: Config, ctx: Context) {
+async function runLighthouse(config: Config, ctx: Context) {
   const { log } = ctx;
   const {
     url,
@@ -246,5 +246,16 @@ export default async function runLighthouse(config: Config, ctx: Context) {
   } finally {
     await page.close();
     await browser.close();
+  }
+}
+
+export default async function run(config: Config, ctx: Context) {
+  try {
+    return await runLighthouse(config, ctx);
+  } catch (e) {
+    if (!isErrorWithResponse(e) || e.response.status < 500) {
+      throw e;
+    }
+    return runLighthouse(config, ctx);
   }
 }
